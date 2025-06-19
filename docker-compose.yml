@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # PHP API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inventory_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - DB_HOST=mysql
+      - DB_DATABASE=inventory_api
+      - DB_USERNAME=root
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - inventory_network
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: inventory_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: inventory_api
+      MYSQL_USER: api_user
+      MYSQL_PASSWORD: api_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - inventory_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: inventory_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - inventory_network
+
+  # phpMyAdmin (Database management)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: inventory_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: secret
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - inventory_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  inventory_network:
+    driver: bridge
